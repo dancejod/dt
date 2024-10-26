@@ -49,6 +49,7 @@ def run(args):
     else: flight_temperature, flight_humidity = 23, 70
     
     img_cnt = 0
+    err_cnt = 0
     start = timer()
     print("[Debug]: \t Time measurement started")
     
@@ -67,19 +68,27 @@ def run(args):
                       -s {in_fpath} -o {tmp_fpath}.raw")
                       
         imwidth, imheight = Image.open(in_fpath).size
-        with open(f"{tmp_fpath}.raw", "rb") as binimg:
-                data = binimg.read()
-                dformat = '{:d}f'.format(len(data)//4)
-                img_arr = np.array(struct.unpack(dformat, data))
-        img_arr = img_arr.reshape(imheight, imwidth)       
-        Image.fromarray(img_arr).save(f"{out_fpath}.tiff")
         
-        os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
+        try:
+            with open(f"{tmp_fpath}.raw", "rb") as binimg:
+                    data = binimg.read()
+                    dformat = '{:d}f'.format(len(data)//4)
+                    img_arr = np.array(struct.unpack(dformat, data))
+            img_arr = img_arr.reshape(imheight, imwidth)       
+            Image.fromarray(img_arr).save(f"{out_fpath}.tiff")
+            
+            os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
+        
+        except FileNotFoundError():
+            print(f"[Error]: Raw file for {img} does not exist. Skipping")
+            err_cnt+=1
+            continue
         
     shutil.rmtree(TMP_DIR)
     end = timer()
     print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
     print(f"[Done]: \t Successfuly processed {len(img_list)} images")
+    print(f"[Done]: \t {err_cnt} images skipped")
 
 if __name__ == "__main__":
     run(sys.argv)
