@@ -11,7 +11,6 @@ from urllib.request import urlopen
 from PIL import Image
 from timeit import default_timer as timer
 from datetime import timedelta
-
 def run(args):
     SDK_URL = r"https://terra-1-g.djicdn.com/2640963bcd8e45c0a4f0cb9829739d6b/TSDK/v1.5%20(10.0.1-EA220%E7%BA%A2%E5%A4%96%E4%BA%8C%E4%BE%9B%E3%80%8110.0-EP300)/dji_thermal_sdk_v1.5_20240507.zip"
     
@@ -79,7 +78,7 @@ def run(args):
             
             os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
         
-        except BaseException():
+        except:
             print(f"[Error]: Raw file for {img} does not exist. Skipping")
             err_cnt+=1
             continue
@@ -87,7 +86,7 @@ def run(args):
     shutil.rmtree(TMP_DIR)
     end = timer()
     print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
-    print(f"[Done]: \t Successfuly processed {len(img_list)} images")
+    print(f"[Done]: \t Successfuly processed {len(img_list) - err_cnt} images")
     print(f"[Done]: \t {err_cnt} images skipped")
 
 if __name__ == "__main__":
