@@ -79,7 +79,7 @@ def run(args):
             
             os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
         
-        except FileNotFoundError():
+        except BaseException():
             print(f"[Error]: Raw file for {img} does not exist. Skipping")
             err_cnt+=1
             continue
