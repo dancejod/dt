@@ -42,7 +42,7 @@ def run(args):
     img_list = [os.path.basename(x) for x in glob.glob(f"{INPUT_DIR}/*_T.JPG")]
     print(f"[Processing]: \t {len(img_list)} images found")
     
-    if args[2]:
+    if args[2] == "T":
         first_img_path = os.path.join(INPUT_DIR, img_list[0])
         flight_temperature, flight_humidity = weather_params.get_weather_conditions(first_img_path)
     else: flight_temperature, flight_humidity = 23, 70
@@ -62,7 +62,7 @@ def run(args):
                               --measurefmt float32 \
                               --distance 25 \
                               --humidity {flight_humidity} \
-                              --emissivity 0.97 \
+                              --emissivity 0.95 \
                               --reflection {flight_temperature} \
                       -s {in_fpath} -o {tmp_fpath}.raw")
                       
@@ -78,7 +78,8 @@ def run(args):
             
             os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
         
-        except:
+        except Exception as e:
+            print(e.args)
             print(f"[Error]: Raw file for {img} does not exist. Skipping")
             err_cnt+=1
             continue
@@ -87,7 +88,7 @@ def run(args):
     end = timer()
     print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
     print(f"[Done]: \t Successfuly processed {len(img_list) - err_cnt} images")
-    print(f"[Done]: \t {err_cnt} images skipped")
+    print(f"[Done]: \t {err_cnt} images skipped ({round(err_cnt/img_cnt*100,2)} %)")
 
 if __name__ == "__main__":
     run(sys.argv)
