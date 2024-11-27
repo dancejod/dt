@@ -71,9 +71,9 @@ def run(args):
         
         try:
             with open(f"{tmp_fpath}.raw", "rb") as binimg:
-                    data = binimg.read()
-                    dformat = '{:d}f'.format(len(data)//4)
-                    img_arr = np.array(struct.unpack(dformat, data))
+                    bindata = binimg.read()
+                    dformat = '{:d}f'.format(len(bindata)//4)
+                    img_arr = np.array(struct.unpack(dformat, bindata))
             img_arr = img_arr.reshape(imheight, imwidth)       
             Image.fromarray(img_arr).save(f"{out_fpath}.tiff")
             
@@ -89,7 +89,7 @@ def run(args):
     end = timer()
     err_rat = err_cnt/img_cnt*100
     print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
-    print(f"[Done]: \t Successfuly processed {len(img_list) - err_cnt} images")
+    print(f"[Done]: \t Successfully processed {len(img_list) - err_cnt} images")
     print(f"[Done]: \t {err_cnt} images skipped ({err_rat:.2f} %)")
 
 if __name__ == "__main__":
