@@ -12,7 +12,7 @@ from PIL import Image
 from timeit import default_timer as timer
 from datetime import timedelta
 def run(args):
-    SDK_URL = r"https://terra-1-g.djicdn.com/2640963bcd8e45c0a4f0cb9829739d6b/TSDK/v1.5%20(10.0.1-EA220%E7%BA%A2%E5%A4%96%E4%BA%8C%E4%BE%9B%E3%80%8110.0-EP300)/dji_thermal_sdk_v1.5_20240507.zip"
+    SDK_URL = r"https://terra-1-g.djicdn.com/2640963bcd8e45c0a4f0cb9829739d6b/TSDK/v1.6(10.1.8-H30T)/dji_thermal_sdk_v1.6_20240927.zip"
     
     if not os.path.isdir("thermal_sdk"):
         print("[Preparations]: \t Thermal SDK not found, downloading")
@@ -24,26 +24,26 @@ def run(args):
     
     else: print("[Preparations]: \t Thermal SDK already downloaded")
         
-    INPUT_DIR = args[1]
-    OUTPUT_DIR = r"{INPUT_DIR}\output".format(INPUT_DIR=INPUT_DIR)
-    TMP_DIR = r"{INPUT_DIR}\tmp".format(INPUT_DIR=INPUT_DIR)
+    input_dir = args[1]
+    output_dir = r"{INPUT_DIR}\output".format(INPUT_DIR=input_dir)
+    tmp_dir = r"{INPUT_DIR}\tmp".format(INPUT_DIR=input_dir)
     
-    assert os.path.exists(INPUT_DIR)
+    assert os.path.exists(input_dir)
     
-    if os.path.exists(OUTPUT_DIR):
-        shutil.rmtree(OUTPUT_DIR)
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
         
-    if os.path.exists(TMP_DIR):
-        shutil.rmtree(TMP_DIR)
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
     
-    os.mkdir(OUTPUT_DIR)
-    os.mkdir(TMP_DIR)
+    os.mkdir(output_dir)
+    os.mkdir(tmp_dir)
     
-    img_list = [os.path.basename(x) for x in glob.glob(f"{INPUT_DIR}/*_T.JPG")]
+    img_list = [os.path.basename(x) for x in glob.glob(f"{input_dir}/*_T.JPG")]
     print(f"[Processing]: \t {len(img_list)} images found")
     
     if args[2] == "T":
-        first_img_path = os.path.join(INPUT_DIR, img_list[0])
+        first_img_path = os.path.join(input_dir, img_list[0])
         flight_temperature, flight_humidity = weather_params.get_weather_conditions(first_img_path)
     else: flight_temperature, flight_humidity = 23, 70
     
@@ -54,15 +54,16 @@ def run(args):
     
     for img in img_list:
         img_cnt+=1
+        img = os.path.splitext(img)[0]
         print(f"[Processing]: \t Image {img_cnt}/{len(img_list)}")
-        in_fpath = os.path.join(INPUT_DIR, img)
-        tmp_fpath = os.path.join(TMP_DIR, img)
-        out_fpath = os.path.join(OUTPUT_DIR, img)
+        in_fpath = os.path.join(input_dir, img+".JPG")
+        tmp_fpath = os.path.join(tmp_dir, img)
+        out_fpath = os.path.join(output_dir, img)
         os.system(f"thermal_sdk\\utility\\bin\windows\\release_x64\\dji_irp.exe -a measure \
                               --measurefmt float32 \
                               --distance 25 \
                               --humidity {flight_humidity} \
-                              --emissivity 0.95 \
+                              --emissivity 0.97 \
                               --reflection {flight_temperature} \
                       -s {in_fpath} -o {tmp_fpath}.raw")
                       
@@ -80,15 +81,16 @@ def run(args):
         
         except Exception as e:
             print(e.args)
-            print(f"[Error]: Raw file for {img} does not exist. Skipping")
+            print(f"[Error]: Raw file for {img}.JPG does not exist. Skipping")
             err_cnt+=1
             continue
         
-    shutil.rmtree(TMP_DIR)
+    shutil.rmtree(tmp_dir)
     end = timer()
+    err_rat = err_cnt/img_cnt*100
     print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
     print(f"[Done]: \t Successfuly processed {len(img_list) - err_cnt} images")
-    print(f"[Done]: \t {err_cnt} images skipped ({round(err_cnt/img_cnt*100,2)} %)")
+    print(f"[Done]: \t {err_cnt} images skipped ({err_rat:.2f} %)")
 
 if __name__ == "__main__":
     run(sys.argv)
