@@ -1,45 +1,45 @@
 import os
-import glob
 import struct
 import sys
 import shutil
 import numpy as np
 import weather_params
+import rasterio as rio
 from io import BytesIO
 from zipfile import ZipFile
 from urllib.request import urlopen
+from pathlib import Path
 from PIL import Image
 from timeit import default_timer as timer
 from datetime import timedelta
+from tqdm import tqdm
+
 def run(args):
     SDK_URL = r"https://terra-1-g.djicdn.com/2640963bcd8e45c0a4f0cb9829739d6b/TSDK/v1.6(10.1.8-H30T)/dji_thermal_sdk_v1.6_20240927.zip"
-    
-    if not os.path.isdir("thermal_sdk"):
+    sdk_path = Path("thermal_sdk")
+
+    if not sdk_path.exists():
         print("[Preparations]: \t Thermal SDK not found, downloading")
         with urlopen(SDK_URL) as response:
             with ZipFile(BytesIO(response.read())) as zfile:
-                os.mkdir("thermal_sdk")
-                zfile.extractall("thermal_sdk")
+                sdk_path.mkdir(parents=True, exist_ok=True)
+                zfile.extractall(sdk_path)
                 print("[Preparations]: \t Thermal SDK successfully downloaded")
     
     else: print("[Preparations]: \t Thermal SDK already downloaded")
         
-    input_dir = args[1]
-    output_dir = r"{INPUT_DIR}\output".format(INPUT_DIR=input_dir)
-    tmp_dir = r"{INPUT_DIR}\tmp".format(INPUT_DIR=input_dir)
+    input_dir = Path(args[1])
+    output_dir = input_dir / "output"
+    tmp_dir = input_dir / "tmp"
     
-    assert os.path.exists(input_dir)
+    assert input_dir.exists(), f"Input directory '{input_dir}' does not exist"
     
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-        
-    if os.path.exists(tmp_dir):
-        shutil.rmtree(tmp_dir)
+    shutil.rmtree(output_dir, ignore_errors=True)
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+    output_dir.mkdir()
+    tmp_dir.mkdir()
     
-    os.mkdir(output_dir)
-    os.mkdir(tmp_dir)
-    
-    img_list = [os.path.basename(x) for x in glob.glob(f"{input_dir}/*_T.JPG")]
+    img_list = sorted(input_dir.glob("*_T.JPG"))
     print(f"[Processing]: \t {len(img_list)} images found")
     
     if args[2] == "T":
@@ -47,37 +47,45 @@ def run(args):
         flight_temperature, flight_humidity = weather_params.get_weather_conditions(first_img_path)
     else: flight_temperature, flight_humidity = 23, 70
     
-    img_cnt = 0
-    err_cnt = 0
+    img_cnt, err_cnt = 0, 0
     start = timer()
     print("[Debug]: \t Time measurement started")
     
-    for img in img_list:
+    for img in tqdm(img_list, desc="Processing images", unit="img"):
         img_cnt+=1
-        img = os.path.splitext(img)[0]
-        print(f"[Processing]: \t Image {img_cnt}/{len(img_list)}")
-        in_fpath = os.path.join(input_dir, img+".JPG")
-        tmp_fpath = os.path.join(tmp_dir, img)
-        out_fpath = os.path.join(output_dir, img)
+        img_name = img.stem
+        in_fpath = img
+        tmp_fpath = tmp_dir / img_name
+        out_fpath = output_dir / f"{img_name}.tiff"
         os.system(f"thermal_sdk\\utility\\bin\windows\\release_x64\\dji_irp.exe -a measure \
                               --measurefmt float32 \
                               --distance 25 \
                               --humidity {flight_humidity} \
-                              --emissivity 0.97 \
+                              --emissivity 1 \
                               --reflection {flight_temperature} \
                       -s {in_fpath} -o {tmp_fpath}.raw")
-                      
-        imwidth, imheight = Image.open(in_fpath).size
         
         try:
+            imwidth, imheight = Image.open(in_fpath).size
+
             with open(f"{tmp_fpath}.raw", "rb") as binimg:
                     bindata = binimg.read()
                     dformat = '{:d}f'.format(len(bindata)//4)
                     img_arr = np.array(struct.unpack(dformat, bindata))
-            img_arr = img_arr.reshape(imheight, imwidth)       
-            Image.fromarray(img_arr).save(f"{out_fpath}.tiff")
+
+            img_arr = img_arr.reshape(imheight, imwidth)      
             
-            os.system(f"exiftool.exe -tagsfromfile {in_fpath} {out_fpath}.tiff -overwrite_original_in_place")
+            with rio.open(
+                out_fpath, "w",
+                driver="GTiff",
+                dtype= rio.float32,
+                height=img_arr.shape[0],
+                width=img_arr.shape[1],
+                count=1) as out:
+
+                out.write(img_arr, 1)
+            
+            os.system(f"exiftool.exe -tagsfromfile {in_fpath} -all:all {out_fpath} -overwrite_original")
         
         except Exception as e:
             print(e.args)
