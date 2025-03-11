@@ -1,26 +1,28 @@
-import os
+from pathlib import Path
 from timeit import default_timer as timer
 from datetime import timedelta
+import os
 
-directory_list = []
+base_dir = Path(r"D:\dancejod_dp\dji_data")
 
-for root, dirs, files in os.walk("D:\dancejod_dp\dji_data", topdown=False):
-    for name in dirs:
-        directory_list.append(os.path.join(root, name))
+directory_list = [
+    directory for directory in base_dir.rglob("*")
+    if ("upske-daniela-termal-honza" in str(directory)
+        and "output" not in str(directory)
+        and "tmp" not in str(directory))
+]
 
-directory_list[:] = [directory for directory in directory_list
-                     if "upske-daniela-termal-honza" in directory
-                     and "\output" not in directory
-                     and r"\tmp" not in directory]
 start = timer()
-print("[Debug]: \t Time measurement started")
-for dir in directory_list:
+print(f"{'[Debug]':<15} Time measurement started")
+
+for dir_path in directory_list:
     try:
-        os.system(f"python convert_thermal_dji.py {dir} T")
+        print(f"{'[Processing]':<15} {dir_path}")
+        os.system(f'python convert_thermal_dji.py "{dir_path}" T')
 
     except Exception as e:
-        print(e.args)
+        print(f"{'[Error]':<15} {e.args}")
         continue
 
 end = timer()
-print(f"[Debug]: \t Elapsed time: {timedelta(seconds=end-start)}")
+print(f"{'[Debug]':<15} Elapsed time: {timedelta(seconds=end-start)}")
