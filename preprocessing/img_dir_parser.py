@@ -3,13 +3,11 @@ from timeit import default_timer as timer
 from datetime import timedelta
 import os
 
-base_dir = Path(r"D:\dancejod_dp\dji_data")
+os.chdir(r"D:\dancejod\dt\preprocessing")
+base_dir = Path(r"C:\Users\PC\Downloads\Termo_Bustehrad_4_8_2025")
 
 directory_list = [
-    directory for directory in base_dir.rglob("*")
-    if ("upske-daniela-termal-honza" in str(directory)
-        and "output" not in str(directory)
-        and "tmp" not in str(directory))
+    directory for directory in base_dir.glob("*")
 ]
 
 start = timer()
@@ -18,7 +16,7 @@ print(f"{'[Debug]':<15} Time measurement started")
 for dir_path in directory_list:
     try:
         print(f"{'[Processing]':<15} {dir_path}")
-        os.system(f'python convert_thermal_dji.py "{dir_path}" T')
+        os.system(f'python convert_thermal_dji.py "{dir_path}" F')
 
     except Exception as e:
         print(f"{'[Error]':<15} {e.args}")
