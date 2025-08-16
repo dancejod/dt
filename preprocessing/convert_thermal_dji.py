@@ -14,7 +14,7 @@ from timeit import default_timer as timer
 from datetime import timedelta
 from tqdm import tqdm
 
-def run(args):
+def run(*args):
     SDK_URL = r"https://terra-1-g.djicdn.com/2640963bcd8e45c0a4f0cb9829739d6b/TSDK/v1.6(10.1.8-H30T)/dji_thermal_sdk_v1.6_20240927.zip"
     sdk_path = Path("thermal_sdk")
 
@@ -28,7 +28,7 @@ def run(args):
     else:
         print(f"{'[Preparations]':<15} Thermal SDK already downloaded")
 
-    input_dir = Path(args[1])
+    input_dir = Path(args[0])
     output_dir = input_dir / "output"
     tmp_dir = input_dir / "tmp"
 
@@ -42,7 +42,7 @@ def run(args):
     img_list = sorted(input_dir.glob("*_T.JPG"))
     print(f"{'[Processing]':<15} {len(img_list)} images found")
 
-    if args[2] == "T":
+    if args[1] == "T":
         flight_temperature, flight_humidity = weather_params.get_weather_conditions(img_list[0])
     else:
         flight_temperature, flight_humidity = 23, 70
